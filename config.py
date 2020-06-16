@@ -1,0 +1,5 @@
+consumer_key = "KNa0QnVoqSW2rvvt2qj8EYLQt"
+consumer_secret = "98mUMaNVDOAcjDDC7OTPrUDxHgbYQllAxAwmIhBpxQ1qwMpGNg"
+access_key = "700545787424481280-rPPUhMePLiRHmPoq40852SKNcaFYGxb"
+access_secret = "hyZ63EK8Eo5cYCgS9lisHuhyfxHrubNQjSy1rgHL1x0vZ"
+time_zone_diff = "05:30"

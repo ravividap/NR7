@@ -1,48 +1,105 @@
-
 import re
 import json
 import time
 import requests
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from firebase import firebase
+from nsepy import get_history
+import tweepy
+import config
+import schedule
+import time
+from datetime import datetime, timedelta
 
-print("NR7 Stocks")
+insideBarList = []
+nr7List = []
 
-firebase = firebase.FirebaseApplication('https://newtest-a66c7.firebaseio.com/', None)
-data =  { 'Name': 'John Doe',
-          'RollNo': 3,
-          'Percentage': 70.02
-          }
-result = firebase.post('/python/Students/',data)
-print(result)
+consumer_key = config.consumer_key
+consumer_secret = config.consumer_secret
+key = config.access_key
+secret = config.access_secret
+
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(key, secret)
+
+api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
+
+tweet_char_limit = 280
+tweetId = ''
+
+# firebase = firebase.FirebaseApplication('https://newtest-a66c7.firebaseio.com/', None)
+# data =  { 'Name': 'John Doe',
+#           'RollNo': 3,
+#           'Percentage': 70.02
+#           }
+# result = firebase.post('/python/Students/',data)
+# print(result)
 
 def check(stockname):
-    res = requests.get('https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=NSE:'+stockname+'&apikey=BX73FYAMN2WVYMWO')
-    days = res.json()['Time Series (Daily)']
-    #today = datetime.today().strftime('%Y-%m-%d')
-    #del days[today]
-    rever_days=sorted(days.keys(), reverse=True)
-    isInsideBar = float(days[rever_days[0]]['2. high']) < float(days[rever_days[1]]['2. high']) and float(days[rever_days[0]]['3. low']) > float(days[rever_days[1]]['3. low'])
+   
+    endd = datetime.today()
+    stard = datetime.today() - timedelta(15)
+   
+    data = get_history(symbol=stockname, start=date(stard.year, stard.month, stard.day), end=date(endd.year,endd.month,endd.day))
+    revdata = data.sort_values(by=['Date'], inplace=False, ascending=False)
+    print(revdata)
+    isInsideBar = float(revdata['High'][0]) < float(revdata['High'][1]) and float(revdata['Low'][0]) > float(revdata['Low'][1])
+    
+    if(isInsideBar):
+        insideBarList.append(stockname)
+    else:
+        return
+    
     isNR7 = True
-    min_diff=float(days[rever_days[0]]['2. high']) - float(days[rever_days[0]]['3. low'])
+    min_diff=float(revdata['High'][0]) - float(revdata['Low'][0])
     for i in range(1, 8):
-        day = days[rever_days[i-1]]
-        diff = float(day['2. high']) - float(day['3. low'])
+        diff = float(revdata['High'][i]) - float(revdata['Low'][i])
         if(min_diff>diff):
             isNR7=False
+            break
       
     if(isInsideBar and isNR7):
-        print(stockname)
-    return;
+        nr7List.append(stockname)
+    return
   
+def getNR7():
+    index=0
+    timeout = 1
+    while(index<len(symbolslist)):
+        check(symbolslist[index])
+        index=index+1
+        timeout+=1
+        if timeout==5:
+            timeout=0
+            time.sleep(35)
+
+def tweet_stocks(texttotweet):
+    try:
+        for i in range(0, len(texttotweet), tweet_char_limit):
+            if(tweetId == ''):
+                tweetObj = api.update_status(texttotweet[i: i + tweet_char_limit])
+            else:
+                tweetObj = api.update_status(texttotweet[i: i + tweet_char_limit], tweetObj.id)
+    except:
+        print('error occured')
 
 symbolslist=["ACC","ADANITRANS","AMBUJACEM","ASHOKLEY","AUROPHARMA","DMART","BAJAJHLDNG","BANDHANBNK","BANKBARODA","BERGEPAINT","BIOCON","BOSCHLTD","CADILAHC","COLPAL","CONCOR","DLF","DABUR","DIVISLAB","GICRE","GODREJCP","HDFCAMC","HDFCLIFE","HAVELLS","HINDPETRO","HINDZINC","ICICIGI","ICICIPRULI","IBULHSGFIN","INDIGO","L&TFH","LUPIN","MARICO","MOTHERSUMI","NHPC","NMDC","OFSS","PAGEIND","PETRONET","PIDILITIND","PEL","PFC","PGHH","PNB","SBILIFE","SRTRANSFIN","SIEMENS","NIACL","UBL","MCDOWELL-N","IDEA"]
-index=0
-timeout = 1
-while(index<len(symbolslist)):
-    check(symbolslist[index])
-    index=index+1
-    timeout+=1
-    if timeout==5:
-        timeout=0
-        time.sleep(65)
+
+print("Inside Bar stocks:")
+print(insideBarList)
+print("NR7+InsideBar stocks:")
+print(nr7List)
+
+getNR7()
+
+insideBarListString = ''.join(insideBarList)
+nr7ListString = ''.join(nr7List)
+
+tweet_stocks('Inside Bar stocks:' + insideBarListString)
+tweet_stocks('NR7 + Inside Bar stocks:' + nr7ListString)
+
+# schedule.every().day.at("01:30").do(getNR7)
+
+# while True:
+#     schedule.run_pending()
+#     time.sleep(1)
