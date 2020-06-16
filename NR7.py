@@ -72,6 +72,14 @@ def getNR7():
         if timeout==5:
             timeout=0
             time.sleep(35)
+    formatAndTweet()
+
+def formatAndTweet():
+    insideBarListString = ', '.join(insideBarList)
+    nr7ListString = ', '.join(nr7List)
+
+    tweet_stocks('Inside Bar stocks:' + insideBarListString)
+    tweet_stocks('NR7 + Inside Bar stocks:' + nr7ListString)
 
 def tweet_stocks(texttotweet):
     try:
@@ -83,23 +91,10 @@ def tweet_stocks(texttotweet):
     except:
         print('error occured')
 
-symbolslist=["ACC","ADANITRANS","AMBUJACEM","ASHOKLEY","AUROPHARMA","DMART","BAJAJHLDNG","BANDHANBNK","BANKBARODA","BERGEPAINT","BIOCON","BOSCHLTD","CADILAHC","COLPAL","CONCOR","DLF","DABUR","DIVISLAB","GICRE","GODREJCP","HDFCAMC","HDFCLIFE","HAVELLS","HINDPETRO","HINDZINC","ICICIGI","ICICIPRULI","IBULHSGFIN","INDIGO","L&TFH","LUPIN","MARICO","MOTHERSUMI","NHPC","NMDC","OFSS","PAGEIND","PETRONET","PIDILITIND","PEL","PFC","PGHH","PNB","SBILIFE","SRTRANSFIN","SIEMENS","NIACL","UBL","MCDOWELL-N","IDEA"]
+symbolslist=["ACC","ADANITRANS","AMBUJACEM","ASIANPAINT","ASHOKLEY","AUROPHARMA","DMART","BAJAJHLDNG","BANDHANBNK","BANKBARODA","BERGEPAINT","BIOCON","BOSCHLTD","CADILAHC","COLPAL","CONCOR","DLF","DABUR","DIVISLAB","GICRE","GODREJCP","HDFCAMC","HDFCLIFE","HAVELLS","HINDPETRO","HINDZINC","ICICIGI","ICICIPRULI","IBULHSGFIN","INDIGO","L&TFH","LUPIN","MARICO","MOTHERSUMI","NHPC","NMDC","OFSS","PAGEIND","PETRONET","PIDILITIND","PEL","PFC","PGHH","SBILIFE","SRTRANSFIN","SIEMENS", "TORNTPHARM", "NIACL","UBL","MCDOWELL-N"]
 
-print("Inside Bar stocks:")
-print(insideBarList)
-print("NR7+InsideBar stocks:")
-print(nr7List)
+schedule.every().day.at("01:30").do(getNR7)
 
-getNR7()
-
-insideBarListString = ''.join(insideBarList)
-nr7ListString = ''.join(nr7List)
-
-tweet_stocks('Inside Bar stocks:' + insideBarListString)
-tweet_stocks('NR7 + Inside Bar stocks:' + nr7ListString)
-
-# schedule.every().day.at("01:30").do(getNR7)
-
-# while True:
-#     schedule.run_pending()
-#     time.sleep(1)
+while True:
+    schedule.run_pending()
+    time.sleep(1)

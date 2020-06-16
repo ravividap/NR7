@@ -1,6 +1,5 @@
 import csv
- 
-exampleFile = open('testcsv.csv')
-exampleReader = csv.reader(exampleFile)
-exampleData = list(exampleReader)
-print(exampleData)
+
+insideBarList = ['acc', 'bcc', 'cdd']
+insideBarListString = ', '.join(insideBarList)
+print(insideBarListString)
