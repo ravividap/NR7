@@ -39,13 +39,14 @@ tweetId = ''
 
 def check(stockname):
     print('checking stock '+stockname)
-    endd = datetime.today()
+    endd = datetime.today() + timedelta(1)
     stard = datetime.today() - timedelta(15)
     try:
         print('getting history')
         data = get_history(symbol=stockname, start=date(stard.year, stard.month, stard.day), end=date(endd.year,endd.month,endd.day))
         print('getting history finish')
         revdata = data.sort_values(by=['Date'], inplace=False, ascending=False)
+        print(revdata)
         isInsideBar = float(revdata['High'][0]) < float(revdata['High'][1]) and float(revdata['Low'][0]) > float(revdata['Low'][1])
         
         if(isInsideBar):
@@ -99,13 +100,13 @@ def tweet_stocks(texttotweet):
     except:
         print('error occured')
 
-symbolslist=["RELIANCE","CIPLA","CUMMINSIND","Voltas","BPCL","ACC","ADANITRANS","AMBUJACEM","ASIANPAINT","ASHOKLEY","AUROPHARMA","DMART","BAJAJHLDNG","BANDHANBNK","BANKBARODA","BERGEPAINT","BIOCON","BOSCHLTD","CADILAHC","COLPAL","CONCOR","DLF","DABUR","DIVISLAB","GICRE","GODREJCP","HDFCAMC","HDFCLIFE","HAVELLS","HINDPETRO","HINDZINC","ICICIGI","ICICIPRULI","IBULHSGFIN","INDIGO","L&TFH","LUPIN","MARICO","MOTHERSUMI","NHPC","NMDC","OFSS","PAGEIND","PETRONET","PIDILITIND","PEL","PFC","PGHH","SBILIFE","SRTRANSFIN","SIEMENS", "TORNTPHARM", "NIACL","UBL","MCDOWELL-N"]
+symbolslist=["SUNPHARMA","HEROMOTOCO","RELIANCE","CIPLA","CUMMINSIND","Voltas","BPCL","ACC","ADANITRANS","AMBUJACEM","ASIANPAINT","ASHOKLEY","AUROPHARMA","DMART","BAJAJHLDNG","BANDHANBNK","BANKBARODA","BERGEPAINT","BIOCON","BOSCHLTD","CADILAHC","COLPAL","CONCOR","DLF","DABUR","DIVISLAB","GICRE","GODREJCP","HDFCAMC","HDFCLIFE","HAVELLS","HINDPETRO","HINDZINC","ICICIGI","ICICIPRULI","IBULHSGFIN","INDIGO","L&TFH","LUPIN","MARICO","MOTHERSUMI","NHPC","NMDC","OFSS","PAGEIND","PETRONET","PIDILITIND","PEL","PFC","PGHH","SBILIFE","SRTRANSFIN","SIEMENS", "TORNTPHARM", "NIACL","UBL","MCDOWELL-N"]
 
 
 getNR7()
 
-schedule.every().day.at("01:30").do(getNR7)
+# schedule.every().day.at("01:30").do(getNR7)
 
-while True:
-    schedule.run_pending()
-    time.sleep(1)
+# while True:
+#     schedule.run_pending()
+#     time.sleep(1)
