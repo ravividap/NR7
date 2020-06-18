@@ -3,7 +3,7 @@ import json
 import time
 import requests
 from datetime import datetime, date, timedelta
-from firebase import firebase
+#from firebase import firebase
 from nsepy import get_history
 import tweepy
 import config
@@ -11,6 +11,8 @@ import schedule
 import time
 from datetime import datetime, timedelta
 
+print('Started..')
+print(datetime.today())
 insideBarList = []
 nr7List = []
 
@@ -36,33 +38,37 @@ tweetId = ''
 # print(result)
 
 def check(stockname):
-   
+    print('checking stock '+stockname)
     endd = datetime.today()
     stard = datetime.today() - timedelta(15)
-   
-    data = get_history(symbol=stockname, start=date(stard.year, stard.month, stard.day), end=date(endd.year,endd.month,endd.day))
-    revdata = data.sort_values(by=['Date'], inplace=False, ascending=False)
-    print(revdata)
-    isInsideBar = float(revdata['High'][0]) < float(revdata['High'][1]) and float(revdata['Low'][0]) > float(revdata['Low'][1])
-    
-    if(isInsideBar):
-        insideBarList.append(stockname)
-    else:
-        return
-    
-    isNR7 = True
-    min_diff=float(revdata['High'][0]) - float(revdata['Low'][0])
-    for i in range(1, 8):
-        diff = float(revdata['High'][i]) - float(revdata['Low'][i])
-        if(min_diff>diff):
-            isNR7=False
-            break
-      
-    if(isInsideBar and isNR7):
-        nr7List.append(stockname)
+    try:
+        print('getting history')
+        data = get_history(symbol=stockname, start=date(stard.year, stard.month, stard.day), end=date(endd.year,endd.month,endd.day))
+        print('getting history finish')
+        revdata = data.sort_values(by=['Date'], inplace=False, ascending=False)
+        isInsideBar = float(revdata['High'][0]) < float(revdata['High'][1]) and float(revdata['Low'][0]) > float(revdata['Low'][1])
+        
+        if(isInsideBar):
+            insideBarList.append(stockname)
+        else:
+            return
+        
+        isNR7 = True
+        min_diff=float(revdata['High'][0]) - float(revdata['Low'][0])
+        for i in range(1, 8):
+            diff = float(revdata['High'][i]) - float(revdata['Low'][i])
+            if(min_diff>diff):
+                isNR7=False
+                break
+        
+        if(isInsideBar and isNR7):
+            nr7List.append(stockname)
+    except Exception:
+        print('error in check')
     return
   
 def getNR7():
+    print('started nr7 scan..')
     index=0
     timeout = 1
     while(index<len(symbolslist)):
@@ -75,13 +81,15 @@ def getNR7():
     formatAndTweet()
 
 def formatAndTweet():
+    print('formatting tweet')
     insideBarListString = ', '.join(insideBarList)
     nr7ListString = ', '.join(nr7List)
 
-    tweet_stocks('Inside Bar stocks:' + insideBarListString)
-    tweet_stocks('NR7 + Inside Bar stocks:' + nr7ListString)
+    tweet_stocks('#InsideBar stocks for tommorow:' + insideBarListString)
+    tweet_stocks('#NR7 + #InsideBar stocks for tommorow:' + nr7ListString)
 
 def tweet_stocks(texttotweet):
+    print('started tweeting..')
     try:
         for i in range(0, len(texttotweet), tweet_char_limit):
             if(tweetId == ''):
@@ -91,7 +99,10 @@ def tweet_stocks(texttotweet):
     except:
         print('error occured')
 
-symbolslist=["ACC","ADANITRANS","AMBUJACEM","ASIANPAINT","ASHOKLEY","AUROPHARMA","DMART","BAJAJHLDNG","BANDHANBNK","BANKBARODA","BERGEPAINT","BIOCON","BOSCHLTD","CADILAHC","COLPAL","CONCOR","DLF","DABUR","DIVISLAB","GICRE","GODREJCP","HDFCAMC","HDFCLIFE","HAVELLS","HINDPETRO","HINDZINC","ICICIGI","ICICIPRULI","IBULHSGFIN","INDIGO","L&TFH","LUPIN","MARICO","MOTHERSUMI","NHPC","NMDC","OFSS","PAGEIND","PETRONET","PIDILITIND","PEL","PFC","PGHH","SBILIFE","SRTRANSFIN","SIEMENS", "TORNTPHARM", "NIACL","UBL","MCDOWELL-N"]
+symbolslist=["RELIANCE","CIPLA","CUMMINSIND","Voltas","BPCL","ACC","ADANITRANS","AMBUJACEM","ASIANPAINT","ASHOKLEY","AUROPHARMA","DMART","BAJAJHLDNG","BANDHANBNK","BANKBARODA","BERGEPAINT","BIOCON","BOSCHLTD","CADILAHC","COLPAL","CONCOR","DLF","DABUR","DIVISLAB","GICRE","GODREJCP","HDFCAMC","HDFCLIFE","HAVELLS","HINDPETRO","HINDZINC","ICICIGI","ICICIPRULI","IBULHSGFIN","INDIGO","L&TFH","LUPIN","MARICO","MOTHERSUMI","NHPC","NMDC","OFSS","PAGEIND","PETRONET","PIDILITIND","PEL","PFC","PGHH","SBILIFE","SRTRANSFIN","SIEMENS", "TORNTPHARM", "NIACL","UBL","MCDOWELL-N"]
+
+
+getNR7()
 
 schedule.every().day.at("01:30").do(getNR7)
 
