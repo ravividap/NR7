@@ -3,7 +3,7 @@ import json
 import time
 import requests
 from datetime import datetime, date, timedelta
-#from firebase import firebase
+from firebase import firebase
 from nsepy import get_history
 import tweepy
 import config
@@ -12,9 +12,11 @@ import time
 from datetime import datetime, timedelta
 
 print('Started..')
-print(datetime.today())
+
 insideBarList = []
 nr7List = []
+prevInsideBars = []
+fakeyList = []
 
 consumer_key = config.consumer_key
 consumer_secret = config.consumer_secret
@@ -28,16 +30,23 @@ api = tweepy.API(auth, wait_on_rate_limit=True, wait_on_rate_limit_notify=True)
 
 tweet_char_limit = 280
 tweetId = ''
+firebasePath = '/NR7/'
+firebaseSnapName = 'insidebar'
 
-# firebase = firebase.FirebaseApplication('https://newtest-a66c7.firebaseio.com/', None)
-# data =  { 'Name': 'John Doe',
-#           'RollNo': 3,
-#           'Percentage': 70.02
-#           }
-# result = firebase.post('/python/Students/',data)
-# print(result)
+
+firebase = firebase.FirebaseApplication('https://newtest-a66c7.firebaseio.com/', None)
+
+def postToFirebase(path, snapshot, data):
+    result = firebase.put(path,snapshot,data)
+
+
+def getFromFirebase(path, snapshot):
+    result = firebase.get(path, snapshot)
+    return result
 
 def check(stockname):
+    isFakey = False
+    isPinBar = False
     print('checking stock '+stockname)
     endd = datetime.today() + timedelta(1)
     stard = datetime.today() - timedelta(15)
@@ -49,6 +58,15 @@ def check(stockname):
         print(revdata)
         isInsideBar = float(revdata['High'][0]) < float(revdata['High'][1]) and float(revdata['Low'][0]) > float(revdata['Low'][1])
         
+        if((float(revdata['High'][0]) - float(revdata['Low'][0])) > (2*abs(float(revdata['Close'][0]) - float(revdata['Open'][0])))):
+            isPinBar = ((float(revdata['High'][0]) - float(revdata['Open'][0])) < 0.3*(float(revdata['High'][0])-float(revdata['Low'][0]))) or ((float(revdata['High'][0]) - float(revdata['Close'][0])) < 0.3*(float(revdata['High'][0])-float(revdata['Low'][0])))
+        
+        if(stockname in prevInsideBars):
+            isFakey = float(revdata['Low'][0]) < float(revdata['Low'][1]) # and float(revdata['High'][0]) < float(revdata['High'][1])
+
+        if(isFakey and isPinBar):
+            fakeyList.append(stockname)
+
         if(isInsideBar):
             insideBarList.append(stockname)
         else:
@@ -85,9 +103,11 @@ def formatAndTweet():
     print('formatting tweet')
     insideBarListString = ', '.join(insideBarList)
     nr7ListString = ', '.join(nr7List)
-
+    fakeyListString = ', '.join(fakeyList)
     tweet_stocks('#InsideBar stocks for tommorow:' + insideBarListString)
     tweet_stocks('#NR7 + #InsideBar stocks for tommorow:' + nr7ListString)
+    tweet_stocks('#InsideBar #Fakey stocks for tommorow:' + fakeyListString)
+
 
 def tweet_stocks(texttotweet):
     print('started tweeting..')
@@ -100,10 +120,15 @@ def tweet_stocks(texttotweet):
     except:
         print('error occured')
 
-symbolslist=["SUNPHARMA","HEROMOTOCO","RELIANCE","CIPLA","CUMMINSIND","Voltas","BPCL","ACC","ADANITRANS","AMBUJACEM","ASIANPAINT","ASHOKLEY","AUROPHARMA","DMART","BAJAJHLDNG","BANDHANBNK","BANKBARODA","BERGEPAINT","BIOCON","BOSCHLTD","CADILAHC","COLPAL","CONCOR","DLF","DABUR","DIVISLAB","GICRE","GODREJCP","HDFCAMC","HDFCLIFE","HAVELLS","HINDPETRO","HINDZINC","ICICIGI","ICICIPRULI","IBULHSGFIN","INDIGO","L&TFH","LUPIN","MARICO","MOTHERSUMI","NHPC","NMDC","OFSS","PAGEIND","PETRONET","PIDILITIND","PEL","PFC","PGHH","SBILIFE","SRTRANSFIN","SIEMENS", "TORNTPHARM", "NIACL","UBL","MCDOWELL-N"]
-
+symbolslist=["M&M","PVR","SUNPHARMA","HEROMOTOCO","RELIANCE","CIPLA","CUMMINSIND","Voltas","BPCL","ACC","ADANITRANS","AMBUJACEM","ASIANPAINT","ASHOKLEY","AUROPHARMA","DMART","BAJAJHLDNG","BANDHANBNK","BANKBARODA","BERGEPAINT","BIOCON","BOSCHLTD","CADILAHC","COLPAL","CONCOR","DLF","DABUR","DIVISLAB","GICRE","GODREJCP","HDFCAMC","HDFCLIFE","HAVELLS","HINDPETRO","HINDZINC","ICICIGI","ICICIPRULI","IBULHSGFIN","INDIGO","L&TFH","LUPIN","MARICO","MOTHERSUMI","NHPC","NMDC","OFSS","PAGEIND","PETRONET","PIDILITIND","PEL","PFC","PGHH","SBILIFE","SRTRANSFIN","SIEMENS", "TORNTPHARM", "NIACL","UBL","MCDOWELL-N"]
+ 
+prevInsideBars = getFromFirebase(firebasePath, firebaseSnapName)
 
 getNR7()
+
+combinedList = nr7List + insideBarList
+
+postToFirebase(firebasePath, firebaseSnapName, combinedList)
 
 # schedule.every().day.at("01:30").do(getNR7)
 
