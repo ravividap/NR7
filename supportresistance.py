@@ -72,17 +72,17 @@ def mydate(x,pos):
 
 
 symbol = "CBIO"
-start = "2020-06-10"
-end = "2020-0-11"
+start = "2020-03-10"
+end = "2020-06-11"
 est = pytz.timezone('US/Eastern')
 date_format = "%H:%M"
 
 ticker = yf.Ticker(symbol)
-data = ticker.history(period="1d", interval="1m",start=start, end=end, prepost=False, actions=False)
-data = data[:60] #30 1M candles
+data = ticker.history(period="100d", interval="1d",start=start, end=end, prepost=False, actions=False)
+#data = data[:60] #30 1M candles
 
 data["Time"] = [d.timestamp() for d in data.index]
-data.Time = data.Time.tz_convert(est)
+#data.Time = data.Time.tz_convert(est)
 data = data[["Time", "Open", "High", "Low", "Close", "Volume"]]
 
 ax = plot_stock_data(data)

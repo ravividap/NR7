@@ -10,6 +10,7 @@ import config
 import schedule
 import time
 from datetime import datetime, timedelta
+from mpl_finance import candlestick_ohlc
 
 print('Started..')
 
@@ -120,18 +121,88 @@ def tweet_stocks(texttotweet):
     except:
         print('error occured')
 
-symbolslist=["ESCORTS","JUBLFOOD","IGL","NESTLEIND","NIITTECH","M&M","PVR","SUNPHARMA","HEROMOTOCO","RELIANCE","CIPLA","CUMMINSIND","Voltas","BPCL","ACC","ADANITRANS","AMBUJACEM","ASIANPAINT","ASHOKLEY","AUROPHARMA","DMART","BAJAJHLDNG","BANDHANBNK","BANKBARODA","BERGEPAINT","BIOCON","BOSCHLTD","CADILAHC","COLPAL","CONCOR","DLF","DABUR","DIVISLAB","GICRE","GODREJCP","HDFCAMC","HDFCLIFE","HAVELLS","HINDPETRO","HINDZINC","ICICIGI","ICICIPRULI","IBULHSGFIN","INDIGO","L&TFH","LUPIN","MARICO","MOTHERSUMI","NHPC","NMDC","OFSS","PAGEIND","PETRONET","PIDILITIND","PEL","PFC","PGHH","SBILIFE","SRTRANSFIN","SIEMENS", "TORNTPHARM", "NIACL","UBL","MCDOWELL-N"]
+
+def plot_stock_data(data):
+    fig, ax = plt.subplots()
+    ax1 = plt.subplot2grid((5,1), (0,0), rowspan=4)
+    ax2 = plt.subplot2grid((5,1), (4,0), sharex=ax1)
+
+    ax1.set_title("{} - {}".format(symbol, start))
+    ax1.set_facecolor("#131722")
+    ax1.xaxis.set_major_formatter(mpticker.FuncFormatter(mydate))
+
+    candlestick_ohlc(ax1, data.to_numpy(), width=8, colorup='#77d879', colordown='#db3f3f')
+
+    ax2.bar(data['Time'], data['Volume'], width=30)
+    ax2.xaxis.set_major_formatter(mpticker.FuncFormatter(mydate))
+    fig.subplots_adjust(hspace=0)
+    fig.autofmt_xdate()
+    return ax1
+
+
+
+def plotChart():
+    endd = datetime.today() + timedelta(1)
+    stard = datetime.today() - timedelta(100)
+    try:
+        print('getting history')
+        data = get_history(symbol=stockname, start=date(stard.year, stard.month, stard.day), end=date(endd.year,endd.month,endd.day))
+        print(data)
+        data = data[["Time", "Open", "High", "Low", "Close", "Volume"]]
+        print(data)
+        ax = plot_stock_data(data)
+
+
+
+def get_optimum_clusters(df, saturation_point=0.05):
+    wcss = []
+    k_models = []
+
+    size = min(11, len(df.index))
+    for i in range(1, size):
+        kmeans = KMeans(n_clusters=i, init='k-means++', max_iter=300, n_init=10, random_state=0)
+        kmeans.fit(df)
+        wcss.append(kmeans.inertia_)
+        k_models.append(kmeans)
+
+    # Compare differences in inertias until it's no more than saturation_point
+    optimum_k = len(wcss)-1
+    for i in range(0, len(wcss)-1):
+        diff = abs(wcss[i+1] - wcss[i])
+        if diff < saturation_point:
+            optimum_k = i
+            break
+
+    print("Optimum K is " + str(optimum_k + 1))
+    optimum_clusters = k_models[optimum_k]
+
+    return optimum_clusters
+
+
+
+lows = pandas.DataFrame(data=data, index=data.index, columns=["Low"])
+highs = pandas.DataFrame(data=data, index=data.index, columns=["High"])
+
+low_clusters = get_optimum_clusters(lows)
+low_centers = low_clusters.cluster_centers_
+low_centers = numpy.sort(low_centers, axis=0)
+
+high_clusters = get_optimum_clusters(highs)
+high_centers = high_clusters.cluster_centers_
+high_centers = numpy.sort(high_centers, axis=0)
+
+symbolslist=["M&M","PVR","SUNPHARMA","HEROMOTOCO","RELIANCE","CIPLA","CUMMINSIND","Voltas","BPCL","ACC","ADANITRANS","AMBUJACEM","ASIANPAINT","ASHOKLEY","AUROPHARMA","DMART","BAJAJHLDNG","BANDHANBNK","BANKBARODA","BERGEPAINT","BIOCON","BOSCHLTD","CADILAHC","COLPAL","CONCOR","DLF","DABUR","DIVISLAB","GICRE","GODREJCP","HDFCAMC","HDFCLIFE","HAVELLS","HINDPETRO","HINDZINC","ICICIGI","ICICIPRULI","IBULHSGFIN","INDIGO","L&TFH","LUPIN","MARICO","MOTHERSUMI","NHPC","NMDC","OFSS","PAGEIND","PETRONET","PIDILITIND","PEL","PFC","PGHH","SBILIFE","SRTRANSFIN","SIEMENS", "TORNTPHARM", "NIACL","UBL","MCDOWELL-N"]
  
-prevInsideBars = getFromFirebase(firebasePath, firebaseSnapName)
 
 getNR7()
 
-combinedList = nr7List + insideBarList
+plotChart()
 
-postToFirebase(firebasePath, firebaseSnapName, combinedList)
+for low in low_centers[:2]:
+    ax.axhline(low[0], color='yellow', ls='--')
 
-# schedule.every().day.at("01:30").do(getNR7)
+for high in high_centers[-1:]:
+    ax.axhline(high[0], color='orange', ls='--')
 
-# while True:
-#     schedule.run_pending()
-#     time.sleep(1)
+plt.show()
+
