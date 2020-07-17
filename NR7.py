@@ -9,6 +9,7 @@ import schedule
 import time
 import divergence
 import numpy as np
+import math, ta
 
 print('Started..')
 
@@ -124,7 +125,7 @@ def check(stockname):
     isPinBar = False
     print('checking stock '+stockname)
     endd = datetime.today() + timedelta(1)
-    stard = datetime.today() - timedelta(15)
+    stard = datetime.today() - timedelta(30)
     try:
         print('getting history')
         data = get_history(symbol=stockname, start=date(stard.year, stard.month, stard.day), end=date(endd.year,endd.month,endd.day))
@@ -141,14 +142,14 @@ def check(stockname):
         print(revdata)
         isInsideBar = float(revdata['High'][0]) < float(revdata['High'][1]) and float(revdata['Low'][0]) > float(revdata['Low'][1])
         
-        if(revdata['Delivery up'][0] == 1)
+        if(revdata['Delivery up'][0] == 1):
             deliveryPercentUp.append(stockname)
 
 
         if((float(revdata['High'][0]) - float(revdata['Low'][0])) > (2*abs(float(revdata['Close'][0]) - float(revdata['Open'][0])))):
             isPinBar = ((float(revdata['High'][0]) - float(revdata['Open'][0])) < 0.3*(float(revdata['High'][0])-float(revdata['Low'][0]))) or ((float(revdata['High'][0]) - float(revdata['Close'][0])) < 0.3*(float(revdata['High'][0])-float(revdata['Low'][0])))
         
-        if(stockname in prevInsideBars):
+        if(prevInsideBars != None and stockname in prevInsideBars):
             isFakey = float(revdata['Low'][0]) < float(revdata['Low'][1]) # and float(revdata['High'][0]) < float(revdata['High'][1])
 
         if(isFakey and isPinBar):
@@ -173,37 +174,33 @@ def check(stockname):
         print('error in check')
     return
 
-def checkDivergence(data):
-    data = data.drop(columns=['Series','Last','VWAP','Turnover','Trades','Deliverable Volume','%Deliverble'])
-    delta = data.iloc[:, 5].diff()  # 7 the column is close
-    #delta = delta[1:] 
-    #print(delta)
-    # Make the positive gains (up) and negative gains (down) Series
-    up, down = delta.copy(), delta.copy()
-    up[up < 0] = 0
-    down[down > 0] = 0
-    lookback = 14
-    roll_up = up.ewm(lookback).mean()
-    roll_down = down.abs().ewm(lookback).mean()
-    # Calculate the RSI based on SMA
-    RS = roll_up / roll_down
-    RSI = (100.0 - (100.0 / (1.0 + RS)))
-    RSI = np.array(RSI)
-    data['rsi'] = RSI
-    data = data.sort_values(by=['Date'], inplace=False, ascending=False)
+def checkDivergence(stockname):
+    endd = datetime.today() + timedelta(1)
+    stard = datetime.today() - timedelta(130)
+    print('getting history')
+    data = get_history(symbol=stockname, start=date(stard.year, stard.month, stard.day), end=date(endd.year,endd.month,endd.day))
+
+    revdata = data.sort_values(by=['Date'], inplace=False, ascending=True)
+    rsi = ta.momentum.RSIIndicator(revdata['Close'],14).rsi()
+    data['rsi'] = rsi.sort_values(ascending=True)
     rsi_prices = create_rsi_price_array(data['rsi'],data['Close']) 
     divergence = bullish_divergence(rsi_prices,0.5,35)
-
+    if divergence != None and divergence[1] > 5 :
+        troughs = divergence[0]
+        trough_diff = troughs[1] - troughs[0] #used for calculate strength of divergence
+        if trough_diff > 0: 
+            print('Divergence:'+stockname)
 
 def getNR7():
     print('started nr7 scan..')
     index=0
     timeout = 1
     while(index<len(symbolslist)):
-        check(symbolslist[index])
+        #check(symbolslist[index])
+        checkDivergence(symbolslist[index])
         index=index+1
         timeout+=1
-        if timeout==5:
+        if timeout==4:
             timeout=0
             time.sleep(5)
     formatAndTweet()
@@ -213,9 +210,15 @@ def formatAndTweet():
     insideBarListString = ', '.join(insideBarList)
     nr7ListString = ', '.join(nr7List)
     fakeyListString = ', '.join(fakeyList)
+    
+    deliveryPercentUpString = ', '.join(deliveryPercentUp)
+    #tweet_stocks('Stocks with 3days del% > 5days del% > 10days del% > 15days del%:' + deliveryPercentUpString)
     #tweet_stocks('#InsideBar stocks for tommorow:' + insideBarListString)
     #tweet_stocks('#NR7 + #InsideBar stocks for tommorow:' + nr7ListString)
     #tweet_stocks('#InsideBar #Fakey stocks for tommorow:' + fakeyListString)
+    print('#InsideBar stocks for tommorow:' + insideBarListString)
+    print('#NR7 + #InsideBar stocks for tommorow:' + nr7ListString)
+    print('#InsideBar #Fakey stocks for tommorow:' + fakeyListString)
 
 
 def tweet_stocks(texttotweet):
@@ -233,9 +236,9 @@ symbolslist=["MARUTI","TATACONSUM","AMARAJABAT","COALINDIA","ESCORTS","JUBLFOOD"
  
 prevInsideBars = getFromFirebase(firebasePath, firebaseSnapName)
 
+
 getNR7()
 
 combinedList = nr7List + insideBarList
 
-
-postToFirebase(firebasePath, firebaseSnapName, combinedList)
+#postToFirebase(firebasePath, firebaseSnapName, combinedList)
