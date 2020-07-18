@@ -84,7 +84,7 @@ class NR7Strategy(bt.Strategy):
                 self.log('BUY CREATE, %.2f' % self.datahigh[0])
 
                 # Keep track of the created order to avoid a 2nd order
-                self.order = self.buy(exectype=Order.StopLimit, price=self.datahigh[0] + 3, plimit=self.datahigh[0] + 7, valid=self.datas[0].datetime.date(0) + datetime.timedelta(days=3))
+                self.order = self.buy(exectype=Order.StopLimit, price=self.datahigh[0], valid=self.datas[0].datetime.date(0) + datetime.timedelta(days=3))
 
         else:
 
@@ -114,7 +114,7 @@ if __name__ == '__main__':
     data = bt.feeds.YahooFinanceCSVData(
         dataname=datapath,
         # Do not pass values before this date
-        fromdate=datetime.datetime(2019, 1, 1),
+        fromdate=datetime.datetime(2020, 6, 11),
         # Do not pass values before this date
         todate=datetime.datetime(2020, 12, 31),
         # Do not pass values after this date
