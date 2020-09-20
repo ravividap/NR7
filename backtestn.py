@@ -22,10 +22,13 @@ class NR7Strategy(bt.Strategy):
     def __init__(self):
         # Keep a reference to the "close" line in the data[0] dataseries
         self.dataclose = self.datas[0].adjclose
-        self.dataopen = self.datas[0].open
-        self.datahigh = self.datas[0].high
-        self.datalow = self.datas[0].low
-
+        self.sma200 = bt.indicators.SimpleMovingAverage(
+            self.datas[0], period=200)
+        self.sma20 = bt.indicators.SimpleMovingAverage(
+            self.datas[0], period=20)
+        self.sma5 = bt.indicators.SimpleMovingAverage(
+            self.datas[0], period=5)
+        self.rsi2 = bt.ind.RSI(self.datas[0], period=2)
         # To keep track of pending orders and buy price/commission
         self.order = None
         self.buyprice = None
@@ -117,7 +120,7 @@ if __name__ == '__main__':
         # Do not pass values before this date
         fromdate=datetime.datetime(2015, 6, 11),
         # Do not pass values before this date
-        todate=datetime.datetime(2020, 12, 31),
+        todate=datetime.datetime(2020, 1, 15),
         # Do not pass values after this date
         reverse=False)
 
@@ -140,4 +143,4 @@ if __name__ == '__main__':
 
     # Print out the final result
     print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
-    
+    cerebro.plot()
