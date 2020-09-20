@@ -8,6 +8,7 @@ import sys  # To find out the script name (in argv[0])
 # Import the backtrader platform
 import backtrader as bt
 from backtrader import Order
+import matplotlib as plt
 
 
 # Create a Stratey
@@ -79,23 +80,23 @@ class NR7Strategy(bt.Strategy):
         if not self.position:
 
             # Not yet ... we MIGHT BUY if ...
-            if (self.datahigh[0] < self.datahigh[-1]) and (self.datalow[0] > self.datalow[-1]):
+            if (self.dataclose[0] < self.dataclose[-5]) and (self.dataclose[0] > self.dataclose[-20]):
 
-                self.log('BUY CREATE, %.2f' % self.datahigh[0])
+                self.log('BUY CREATE, %.2f' % self.dataclose[0])
 
                 # Keep track of the created order to avoid a 2nd order
-                self.order = self.buy(exectype=Order.StopLimit, price=self.datahigh[0], valid=self.datas[0].datetime.date(0) + datetime.timedelta(days=3))
+                #self.order = self.buy(exectype=Order.StopLimit, price=self.datahigh[0], valid=self.datas[0].datetime.date(0) + datetime.timedelta(days=3))
+                self.order = self.buy(size=75)
 
         else:
 
             # Already in the market ... we might sell
-            if len(self) >= (self.bar_executed + 3):
+            # Not yet ... we MIGHT BUY if ...
+            if (self.dataclose[0] > self.dataclose[-5]) and (self.dataclose[0] < self.dataclose[-20]):
                 # SELL, SELL, SELL!!! (with all possible default parameters)
                 self.log('SELL CREATE, %.2f' % self.dataclose[0])
-
                 # Keep track of the created order to avoid a 2nd order
-                self.order = self.sell()
-
+                self.order = self.sell(size=75)
 
 
 if __name__ == '__main__':
@@ -114,7 +115,7 @@ if __name__ == '__main__':
     data = bt.feeds.YahooFinanceCSVData(
         dataname=datapath,
         # Do not pass values before this date
-        fromdate=datetime.datetime(2020, 6, 11),
+        fromdate=datetime.datetime(2015, 6, 11),
         # Do not pass values before this date
         todate=datetime.datetime(2020, 12, 31),
         # Do not pass values after this date
@@ -139,3 +140,4 @@ if __name__ == '__main__':
 
     # Print out the final result
     print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
+    
