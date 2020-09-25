@@ -2,7 +2,8 @@ import backtrader as bt
 from datetime import datetime
 import ta
 import pyfolio as pf
-from strategies import MFIStrategy
+from strategies import NR3Strategy
+import matplotlib
 
 def printTradeAnalysis(analyzer):
     '''
@@ -39,11 +40,11 @@ def printTradeAnalysis(analyzer):
 cerebro = bt.Cerebro()
 
 # Add a strategy
-cerebro.addstrategy(MFIStrategy)
+cerebro.addstrategy(NR3Strategy)
 
 # Create a Data Feed
 data = bt.feeds.YahooFinanceData(
-    dataname='^NSEI',
+    dataname='TCS.NS',
     fromdate = datetime(2017,1,1),
     todate = datetime(2020,9,1),
     buffered= True
@@ -72,4 +73,4 @@ printTradeAnalysis(firstStrat.analyzers.ta.get_analysis())
 # Print out the final result
 print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
-cerebro.plot(style='candlestick')
+cerebro.plot()
