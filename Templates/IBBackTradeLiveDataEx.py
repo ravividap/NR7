@@ -150,6 +150,7 @@ stockkwargs = dict(
     )
 
 data0 = store.getdata(dataname="RELIANCE-FUT-NSE-INR", **stockkwargs)
+print()
 cerebro.resampledata(data0, timeframe=bt.TimeFrame.Minutes, compression=5)
 
 # Set our desired cash start
