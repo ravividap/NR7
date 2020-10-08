@@ -8,6 +8,7 @@ import matplotlib as plt
 import datetime
 import pytz
 import ta
+import backtrader.feeds as btfeeds
 
 class IntraTrendStrategy(bt.Strategy):
     
@@ -73,8 +74,17 @@ class IntraTrendStrategy(bt.Strategy):
         self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' %
                  (trade.pnl, trade.pnlcomm))
 
+    def start(self):
+        self.counter = 0
+
+    def prenext(self):
+        self.counter += 1
+        self.log('prenext len %d - counter %d' % (len(self), self.counter))
+
     def next(self):
+        self.counter += 1
         # Simply log the closing price of the series from the reference
+        self.log('---next len %d - counter %d' % (len(self), self.counter))
         self.log('%d Close, %.2f, RSI, %.2f' % (len(self), self.dataclose[0], self.rsi[0]))
 
         if(self.data.datetime.time(0) == datetime.time(9,15)):
@@ -129,41 +139,24 @@ class IntraTrendStrategy(bt.Strategy):
 
 
 
-# Create a cerebro entity
-cerebro = bt.Cerebro()
 
-store = bt.stores.IBStore(host="127.0.0.1", port=7496, clientId= 4)
-
-# Add a strategy
-cerebro.addstrategy(IntraTrendStrategy)
+# data0 = store.getdata(dataname="TCS-STK-NSE-INR", **stockkwargs)
+# cerebro.resampledata(data0, timeframe=bt.TimeFrame.Days, compression=1)
 
 stockkwargs = dict(
         timeframe=bt.TimeFrame.Minutes,
-        rtbar=False,  # use RealTime 5 seconds bars
+        compression=30,
         historical=True,  # only historical download
-        qcheck=0.5,  # timeout in seconds (float) to check for events
-        fromdate=datetime.datetime(2020, 6, 1),  # get data from..
-        todate=datetime.datetime(2020, 9, 20),  # get data from..
-        latethrough=False,  # let late samples through
-        tradename=None,  # use a different asset as order target
-        tz="Asia/Kolkata"
+        fromdate=datetime.datetime(2020, 9, 1),  # get data from..
+        todate=datetime.datetime(2020, 9, 13)  # get data from..
     )
 
-data0 = store.getdata(dataname="RELIANCE-FUT-NSE-INR", **stockkwargs)
-print()
-cerebro.resampledata(data0, timeframe=bt.TimeFrame.Minutes, compression=5)
+cerebro = bt.Cerebro(stdstats=False)
+store = bt.stores.IBStore(port=7496,clientId=5)
+data = store.getdata(dataname='TCS-STK-NSE-INR',**stockkwargs)  
+#cerebro.adddata(data)
+ 
 
-# Set our desired cash start
-cerebro.broker.setcash(100000.0)
-# Set the commission - 0.1% ... divide by 100 to remove the %
-cerebro.broker.setcommission(commission=0.001)
-
-# Print out the starting conditions
-print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
-
-# Run over everything
+cerebro.replaydata(data,timeframe=bt.TimeFrame.Minutes,compression=30)
+cerebro.addstrategy(IntraTrendStrategy)
 cerebro.run()
-
-# Print out the final result
-print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
-#cerebro.plot(style='candlestick')

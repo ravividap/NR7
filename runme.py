@@ -1,8 +1,8 @@
 import backtrader as bt
 from datetime import datetime
 import ta
-import pyfolio as pf
-from strategies import NR3Strategy
+#import pyfolio as pf
+from strategies import SmallStrategy
 import matplotlib
 
 def printTradeAnalysis(analyzer):
@@ -36,41 +36,68 @@ def printTradeAnalysis(analyzer):
         print(row_format.format('',*row))
 
         
+
 # Create a cerebro entity
 cerebro = bt.Cerebro()
 
-# Add a strategy
-cerebro.addstrategy(NR3Strategy)
+store = bt.stores.IBStore(host="127.0.0.1", port=7496, clientId= 4)
 
-# Create a Data Feed
-data = bt.feeds.YahooFinanceData(
-    dataname='TCS.NS',
-    fromdate = datetime(2017,1,1),
-    todate = datetime(2020,9,1),
-    buffered= True
+# Add a strategy
+cerebro.addstrategy(SmallStrategy)
+
+stockkwargs = dict(
+        timeframe=bt.TimeFrame.Minutes,
+        compression =5,
+        rtbar=False,  # use RealTime 5 seconds bars
+        historical=True,  # only historical download
+        qcheck=0.5,  # timeout in seconds (float) to check for events
+        fromdate=datetime(2020, 8, 1),  # get data from..
+        todate=datetime(2020, 9, 20),  # get data from..
+        latethrough=False,  # let late samples through
+        tradename=None,  # use a different asset as order target
+        tz="Asia/Kolkata"
     )
+
+data0 = store.getdata(dataname="RELIANCE-FUT-NSE-INR", **stockkwargs)
+cerebro.replaydata(data0, timeframe=bt.TimeFrame.Days, compression=1)
+
+cerebro.run()
+
+# # Create a cerebro entity
+# cerebro = bt.Cerebro()
+
+# # Add a strategy
+# cerebro.addstrategy(NR3Strategy)
+
+# # Create a Data Feed
+# data = bt.feeds.YahooFinanceData(
+#     dataname='TCS.NS',
+#     fromdate = datetime(2017,1,1),
+#     todate = datetime(2020,9,1),
+#     buffered= True
+#     )
     
 
-# Add the Data Feed to Cerebro
-cerebro.adddata(data)
+# # Add the Data Feed to Cerebro
+# cerebro.adddata(data)
 
-cerebro.broker.setcash(300000.0)
-# Set the commission - 0.1% ... divide by 100 to remove the %
-cerebro.broker.setcommission(commission=200, margin=100000, mult=75)
+# cerebro.broker.setcash(300000.0)
+# # Set the commission - 0.1% ... divide by 100 to remove the %
+# cerebro.broker.setcommission(commission=200, margin=100000, mult=75)
 
-# Print out the starting conditions
-print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
+# # Print out the starting conditions
+# print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
-cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="ta")
+# cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="ta")
 
-# Run over everything
-strategies = cerebro.run()
-firstStrat = strategies[0]
+# # Run over everything
+# strategies = cerebro.run()
+# firstStrat = strategies[0]
 
-# print the analyzers
-printTradeAnalysis(firstStrat.analyzers.ta.get_analysis())
+# # print the analyzers
+# printTradeAnalysis(firstStrat.analyzers.ta.get_analysis())
 
-# Print out the final result
-print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
+# # Print out the final result
+# print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
-cerebro.plot()
+# cerebro.plot()
