@@ -40,37 +40,39 @@ def printTradeAnalysis(analyzer):
 # Create a cerebro entity
 cerebro = bt.Cerebro(cheat_on_open=True)
 
-store = bt.stores.IBStore(host="127.0.0.1", port=7496, clientId= 5)
-
-cerebro.broker.set_coc(True)
-cerebro.broker.setcash(300000.0)
-cerebro.broker.setcommission(commission=0.0012)
-# Add a strategy
+# # Add a strategy
 cerebro.addstrategy(HighestHighStrategy)
 
-stockkwargs = dict(
-        timeframe=bt.TimeFrame.Minutes,
-        compression =10,
-        rtbar=False,  # use RealTime 5 seconds bars
-        historical=True,  # only historical download
-        qcheck=0.5,  # timeout in seconds (float) to check for events
-        fromdate=datetime(2019, 2, 2),  # get data from..
-        todate=datetime(2020, 10, 29),  # get data from..
-        latethrough=False,  # let late samples through
-        tradename=None,  # use a different asset as order target
-        tz="Asia/Kolkata"
-    )
-
-data0 = store.getdata(dataname="TCS-STK-NSE-INR", **stockkwargs)
-
-for da in data0:
-    print(da)
+# Create a Data Feed
+data = bt.feeds.YahooFinanceData(
+     dataname='INFY.NS',
+     fromdate = datetime(2015,5,1),
+     todate = datetime(2019,9,1),
+     buffered= True
+     )
     
-cerebro.adddata(data0)
 
+# Add the Data Feed to Cerebro
+cerebro.adddata(data)
+
+cerebro.broker.setcash(300000.0)
+# # Set the commission - 0.1% ... divide by 100 to remove the %
+# cerebro.broker.setcommission(commission=200, margin=100000, mult=75)
+cerebro.broker.setcommission(commission=0.0012)
+
+cerebro.broker.set_coc(True)
+
+# Print out the starting conditions
+print('Starting Portfolio Value: %.2f' % cerebro.broker.getvalue())
+
+# cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="ta")
+
+# Run over everything
 cerebro.run()
+
+
 
 # Print out the final result
 print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
-#cerebro.plot()
+cerebro.plot()

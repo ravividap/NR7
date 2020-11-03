@@ -307,3 +307,125 @@ class SmallStrategy(bt.Strategy):
 
                 # Keep track of the created order to avoid a 2nd order
                 self.order = self.close(size=1)
+
+
+    
+class HighestHighStrategy(bt.Strategy):
+    
+    def log(self, txt, dt=None):
+        ''' Logging function fot this strategy'''
+        dt = dt or self.datas[0].datetime.date(0)
+        print('%s, %s' % (dt.isoformat(), txt))
+        self.f.write('%s, %s\n' % (dt.isoformat(), txt))
+
+    def __init__(self):
+        # Keep a reference to the "close" line in the data[0] dataseries
+        self.dataclose = self.datas[0].close
+        self.dataopen = self.datas[0].open
+        self.datahigh = self.datas[0].high
+        self.datalow = self.datas[0].low
+        self.rsi = bt.indicators.RSI_SMA(self.data.close, period=14)
+
+        self.f = open("log.csv","w")
+        self.f.write('Datetime,Open,High,Low,Close,Action,,,\n')
+        # To keep track of pending orders and buy price/commission
+        self.order = None
+        self.buyprice = 0
+        self.sellprice = 0
+        self.long = True
+        self.buycomm = None
+        self.sl = 0
+        self.target = 0
+        self.shares = None
+    def notify_order(self, order):
+        if order.status in [order.Submitted, order.Accepted]:
+            return
+
+        if order.status in [order.Completed]:
+            if order.isbuy():
+                self.log('%.2f, %.2f, %.2f, %.2f, BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
+                        (self.dataopen[0], 
+                         self.datahigh[0], 
+                         self.datalow[0], 
+                         self.dataclose[0],
+                         order.executed.price,
+                         order.executed.value,
+                         order.executed.comm))
+               
+                self.buyprice = order.executed.price
+                self.buycomm = order.executed.comm
+            else:  # Sell
+                self.log('%.2f, %.2f, %.2f, %.2f, SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' % 
+                        (self.dataopen[0], 
+                         self.datahigh[0], 
+                         self.datalow[0], 
+                         self.dataclose[0],
+                         order.executed.price,
+                         order.executed.value,
+                         order.executed.comm))
+            
+                self.sellprice = order.executed.price
+                self.buycomm = order.executed.comm
+            self.bar_executed = len(self)
+
+        elif order.status in [order.Canceled, order.Margin, order.Rejected]:
+            self.log('Order Canceled/Margin/Rejected')
+
+        self.order = None
+        
+
+    def notify_trade(self, trade):
+        if not trade.isclosed:
+            return
+
+        self.log(',,,,OPERATION PROFIT, GROSS %.2f, NET %.2f' %
+                 (trade.pnl, trade.pnlcomm))
+
+    def next_open(self):
+        if not self.position:
+            buy = True
+            for x in range(1, 10):
+                if(self.datahigh[0]<self.datahigh[-x]):
+                    buy = False
+
+            if (buy  and self.dataopen[0]> self.datalow[-1]):
+                self.sl = self.datalow[-1]
+                self.target = self.dataopen[0] + ((self.dataopen[0] - self.datalow[-1])*3)
+            
+                self.log('%.2f, %.2f, %.2f, %.2f, BUY CREATE, SL %.2f, Target %.2f' % 
+                        (self.dataopen[0], 
+                         self.datahigh[0], 
+                         self.datalow[0], 
+                         self.dataclose[0],
+                         self.sl,
+                         self.target))
+                self.shares = round((self.broker.getcash()*0.02)/(self.dataopen[0] - self.datalow[-1]))
+                self.buyprice = self.dataopen[0]
+                self.order = self.buy(size=self.shares,coc=False)
+                self.long = True 
+                self.sl = self.datalow[-1]
+                self.target = self.dataopen[0] + ((self.dataopen[0] - self.datalow[-1])*2.5)
+            
+    def next(self):
+        self.log('%.2f, %.2f, %.2f, %.2f' % 
+                (self.dataopen[0],
+                 self.datahigh[0],
+                 self.datalow[0], 
+                 self.dataclose[0]))
+        # Check if an order is pending ... if yes, we cannot send a 2nd one
+        if self.order :
+            return
+
+        if self.position:
+            if((self.datalow[0]<self.sl) or self.datahigh[0]>self.target):
+                self.log('%.2f, %.2f, %.2f, %.2f, SELL EXIT' % 
+                        (self.dataopen[0], 
+                        self.datahigh[0],
+                        self.datalow[0],
+                        self.dataclose[0]))
+                self.order = self.close(size=self.shares)
+
+
+    
+    
+    
