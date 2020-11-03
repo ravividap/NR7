@@ -215,7 +215,7 @@ class NR3Strategy(bt.Strategy):
                 self.order = self.close(size=1)
             
             
-class SmallStrategy(bt.Strategy):
+class SmaStrategy(bt.Strategy):
     
     def log(self, txt, dt=None):
         ''' Logging function fot this strategy'''
@@ -309,8 +309,12 @@ class SmallStrategy(bt.Strategy):
                 self.order = self.close(size=1)
 
 
+<<<<<<< HEAD
     
 class HighestHighStrategy(bt.Strategy):
+=======
+class SmallStrategy(bt.Strategy):
+>>>>>>> 4b7d6f94a05b48c610ff7715934ba37aac1255b9
     
     def log(self, txt, dt=None):
         ''' Logging function fot this strategy'''
@@ -320,6 +324,7 @@ class HighestHighStrategy(bt.Strategy):
 
     def __init__(self):
         # Keep a reference to the "close" line in the data[0] dataseries
+<<<<<<< HEAD
         self.dataclose = self.datas[0].close
         self.dataopen = self.datas[0].open
         self.datahigh = self.datas[0].high
@@ -328,12 +333,23 @@ class HighestHighStrategy(bt.Strategy):
 
         self.f = open("log.csv","w")
         self.f.write('Datetime,Open,High,Low,Close,Action,,,\n')
+=======
+        self.dataclose = self.datas[0].adjclose
+        self.dataopen = self.datas[0].open
+        self.datahigh = self.datas[0].high
+        self.datalow = self.datas[0].low
+        self.ma = bt.indicators.MovingAverageSimple(self.datas[0], period=20)
+
+        self.f = open("log.csv","w")
+
+>>>>>>> 4b7d6f94a05b48c610ff7715934ba37aac1255b9
         # To keep track of pending orders and buy price/commission
         self.order = None
         self.buyprice = 0
         self.sellprice = 0
         self.long = True
         self.buycomm = None
+<<<<<<< HEAD
         self.sl = 0
         self.target = 0
         self.shares = None
@@ -364,6 +380,31 @@ class HighestHighStrategy(bt.Strategy):
                          order.executed.value,
                          order.executed.comm))
             
+=======
+        
+    def notify_order(self, order):
+        if order.status in [order.Submitted, order.Accepted]:
+            # Buy/Sell order submitted/accepted to/by broker - Nothing to do
+            return
+
+        # Check if an order has been completed
+        # Attention: broker could reject order if not enough cash
+        if order.status in [order.Completed]:
+            if order.isbuy():
+                self.log(
+                    'BUY EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
+                    (order.executed.price,
+                     order.executed.value,
+                     order.executed.comm))
+
+                self.buyprice = order.executed.price
+                self.buycomm = order.executed.comm
+            else:  # Sell
+                self.log('SELL EXECUTED, Price: %.2f, Cost: %.2f, Comm %.2f' %
+                         (order.executed.price,
+                          order.executed.value,
+                          order.executed.comm))
+>>>>>>> 4b7d6f94a05b48c610ff7715934ba37aac1255b9
                 self.sellprice = order.executed.price
                 self.buycomm = order.executed.comm
             self.bar_executed = len(self)
@@ -378,6 +419,7 @@ class HighestHighStrategy(bt.Strategy):
         if not trade.isclosed:
             return
 
+<<<<<<< HEAD
         self.log(',,,,OPERATION PROFIT, GROSS %.2f, NET %.2f' %
                  (trade.pnl, trade.pnlcomm))
 
@@ -412,10 +454,20 @@ class HighestHighStrategy(bt.Strategy):
                  self.datahigh[0],
                  self.datalow[0], 
                  self.dataclose[0]))
+=======
+        self.log('OPERATION PROFIT, GROSS %.2f, NET %.2f' %
+                 (trade.pnl, trade.pnlcomm))
+
+    def next(self):
+        # Simply log the closing price of the series from the reference
+        self.log('Close, %.2f' % self.dataclose[0])
+
+>>>>>>> 4b7d6f94a05b48c610ff7715934ba37aac1255b9
         # Check if an order is pending ... if yes, we cannot send a 2nd one
         if self.order :
             return
 
+<<<<<<< HEAD
         if self.position:
             if((self.datalow[0]<self.sl) or self.datahigh[0]>self.target):
                 self.log('%.2f, %.2f, %.2f, %.2f, SELL EXIT' % 
@@ -429,3 +481,24 @@ class HighestHighStrategy(bt.Strategy):
     
     
     
+=======
+        # Check if we are in the market
+        if not self.position:
+            condition1 = (self.dataclose[-1] < self.ma[-1])
+            condition2 = (self.dataclose[0] > self.ma[0])
+            if (condition2 and condition1):
+
+                self.log('BUY CREATE, %.2f' % self.dataclose[0])
+
+                # Keep track of the created order to avoid a 2nd order
+                #self.order = self.buy(exectype=Order.StopLimit, price=self.datahigh[0], valid=self.datas[0].datetime.date(0) + datetime.timedelta(days=3))
+                self.order = self.buy(size=1)
+                self.long = True 
+        else:
+            
+            if((self.datalow[0]<self.buyprice) or len(self) > 4):
+                self.log('SELL EXIT, %.2f' % self.dataclose[0])
+
+                # Keep track of the created order to avoid a 2nd order
+                self.order = self.close(size=1)
+>>>>>>> 4b7d6f94a05b48c610ff7715934ba37aac1255b9
