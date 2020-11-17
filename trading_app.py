@@ -3,6 +3,7 @@ import logging
 import os.path
 import schedule
 import datetime 
+import sys
 
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper
@@ -113,6 +114,19 @@ def createStk(symbol,sec_type="STK",currency="INR",exchange="NSE"):
     contract.exchange = exchange
     return contract 
 
+def createCallOpt(symbol,strike,contractMonth,sec_type="OPT",currency="INR",exchange="NSE"):
+    contract = Contract()
+    contract.symbol = symbol
+    contract.secType = sec_type
+    contract.currency = currency
+    contract.exchange = exchange
+    contract.right = "C"
+    contract.strike = strike
+    contract.multiplier = 1
+    contract.tradingClass = 'BANKNIFTY'
+    contract.lastTradeDateOrContractMonth = contractMonth
+    return contract 
+
 def histData(req_num,contract,duration,candle_size, queryTime):
     app.reqHistoricalData(reqId=req_num, 
                           contract=contract,
@@ -143,7 +157,7 @@ def calculatePivots(DF):
 
 def checkStocks():
     logger.info('Checking stocks ')
-    if(datetime.datetime.now().hour > 14):
+    if(datetime.datetime.now().time() > datetime.time(14,0)):
         logger.info('stop checking its 2 already')
         return
 
@@ -177,27 +191,32 @@ def liquidatePosition():
     logger.info("Liquidating positions")
     try:
         app.reqGlobalCancel()
-        time.sleep(3)
+        time.sleep(5)
     except Exception as ex:
         logger.error("Error cancelling pending order: %s", ex)
     try:
         app.reqPositions()
-        time.sleep(3)
+        time.sleep(5)
     except Exception as ex:
         logger.error("Error getting open positions: %s",ex)
     for po in app.pos:  
         try:
-            order_id = app.nextValidOrderId
-            app.placeOrder(order_id,createStk(po),marketOrder("SELL",app.pos[po]))
+            if(app.pos[po] > 0):
+                order_id = app.nextValidOrderId
+                app.placeOrder(order_id,createStk(po),marketOrder("SELL",app.pos[po]))
         except Exception as ex:
             logger.error("Error placing liquidation orders :%s",ex)
+
+def exitProgram():
+    sys.exit()
+
 
 logger = setupLogger()
 
 ########### Connect to TWS Start ##############
 try:
     app = TradingApp()      
-    app.connect("127.0.0.1", 4002, clientId=2)
+    app.connect("127.0.0.1", 7497, clientId=2)
     # starting a separate daemon thread to execute the websocket connection
     con_thread = threading.Thread(target=websocket_con, daemon=True)
     con_thread.start()
@@ -207,12 +226,14 @@ except Exception as ex:
 ###########  Connect to TWS End ##############
 
 ########### Get available cash balance #########
-app.reqAccountSummary(9002, "All", "$LEDGER")
-time.sleep(3)
+histData(4,createCallOpt('BANKNIFTY IND',29000,'20201119'),'1 D', '1 day','')
+
+# app.reqAccountSummary(9002, "All", "$LEDGER")
+# time.sleep(3)
 ########### Get available cash balance end #########
 
 ###########  Prepare Historical Data Start ##############
-tickers = ["AXISBANK","RELIANCE", "HDFC","ICICIBANK","MARUTI","BAJFINANC"]
+tickers = [] #["AXISBANK","RELIANCE", "HDFC","ICICIBANK","MARUTI","BAJFINANC"]
 queryTime = (datetime.datetime.today() - datetime.timedelta(days=1)).strftime("%Y%m%d %H:%M:%S")
 for ticker in tickers:
     try:
@@ -234,6 +255,10 @@ app.reqRealTimeBars(3001, createStk('TCS'), 5, "MIDPOINT", True, [])
 takenPositions = {}
 schedule.every().day.at("09:15").do(checkStocksEveryTenMin)
 schedule.every().day.at("15:20").do(liquidatePosition)
+schedule.every().day.at("15:35").do(exitProgram)
+
+#check error while liquidating ..take logs from rremote server
+
 
 while True:
     schedule.run_pending()
