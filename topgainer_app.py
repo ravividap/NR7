@@ -7,8 +7,9 @@ import sys
 
 from ibapi.client import EClient
 from ibapi.wrapper import EWrapper
-from ibapi.contract import Contract
+from ibapi.contract import Contract, ContractDetails
 from ibapi.order import Order
+from ibapi.scanner import ScannerSubscription
 import threading
 import time
 import pandas as pd
@@ -87,8 +88,20 @@ class TradingApp(EWrapper, EClient):
     def realtimeBar(self, reqId: int, time:int, open_: float, high: float, low: float, close: float, volume: int, wap: float, count: int):
         super().realtimeBar(reqId, time, open_, high, low, close, volume, wap, count)
 
-    
-        
+    def scannerData(self, reqId: int, rank: int, contractDetails: ContractDetails, distance: str, benchmark: str, projection: str, legsStr: str):
+        super().scannerData(reqId, rank, contractDetails, distance, benchmark, projection, legsStr)
+        print("ScannerData. ReqId:", reqId, "Rank:", rank, "Symbol:", contractDetails.contract.symbol,
+                 "SecType:", contractDetails.contract.secType,
+                  "Currency:", contractDetails.contract.currency,
+                  "Distance:", distance, "Benchmark:", benchmark,
+                  "Projection:", projection, "Legs String:", legsStr)
+        #print("ScannerData. ReqId:", reqId, ScanData(contractDetails.contract, rank, distance, benchmark, projection, legsStr))
+
+    def scannerParameters(self, xml: str):
+        super().scannerParameters(xml)
+        open('D:\scanner.xml', 'w').write(xml)
+        print("ScannerParameters received.")
+
 def marketOrder(direction,quantity):
         order = Order()
         order.action = direction
@@ -216,7 +229,7 @@ logger = setupLogger()
 ########### Connect to TWS Start ##############
 try:
     app = TradingApp()      
-    app.connect("127.0.0.1", 7497, clientId=2)
+    app.connect("127.0.0.1", 4001, clientId=2)
     # starting a separate daemon thread to execute the websocket connection
     con_thread = threading.Thread(target=websocket_con, daemon=True)
     con_thread.start()
@@ -225,10 +238,14 @@ except Exception as ex:
     logger.error("Error connecting gateway %s", ex)
 ###########  Connect to TWS End ##############
 
-order_id = app.nextValidOrderId 
-bracket = TradingApp.bracketOrder(order_id, "BUY", 3, 628.5, 600)
-for o in bracket:
-    app.placeOrder(o.orderId, createStk('AXISBANK'), o)
+scanSub = ScannerSubscription()
+scanSub.instrument = "STOCK.HK"
+scanSub.locationCode = "STK.HK.NSE"
+scanSub.scanCode = "TOP_PERC_GAIN"
+
+newdata = app.reqScannerSubscription(7001, scanSub, [], [])
+
+#app.reqScannerParameters()
 
 ########### Get available cash balance #########
 app.reqAccountSummary(9002, "All", "$LEDGER")
@@ -236,7 +253,7 @@ time.sleep(3)
 ########### Get available cash balance end #########
 
 ###########  Prepare Historical Data Start ##############
-tickers = ["AXISBANK","RELIANCE", "HDFC","ICICIBANK","MARUTI","BAJFINANC"]
+tickers = []#["AXISBANK","RELIANCE", "HDFC","ICICIBANK","MARUTI","BAJFINANC"]
 queryTime = (datetime.datetime.today() - datetime.timedelta(days=1)).strftime("%Y%m%d %H:%M:%S")
 for ticker in tickers:
     try:

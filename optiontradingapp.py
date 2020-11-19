@@ -24,12 +24,6 @@ class TradingApp(EWrapper, EClient):
 
     def historicalData(self, reqId, bar):
         print("HistoricalData. ReqId:", reqId, "BarData.", bar)
-        if reqId not in self.data:
-            self.data[reqId] = [{"Date":bar.date, "Ticker":tickers[reqId] ,"Open":bar.open,"High":bar.high,"Low":bar.low,"Close":bar.close,"Volume":bar.volume}]
-            self.df = self.df.append({"Date":bar.date, "Ticker":tickers[reqId] ,"Open":bar.open,"High":bar.high,"Low":bar.low,"Close":bar.close,"Volume":bar.volume},ignore_index = True)
-        else:
-            self.data[reqId].append({"Date":bar.date,"Ticker":tickers[reqId],"Open":bar.open,"High":bar.high,"Low":bar.low,"Close":bar.close,"Volume":bar.volume})
-            self.df = self.df.append({"Date":bar.date, "Ticker":tickers[reqId] ,"Open":bar.open,"High":bar.high,"Low":bar.low,"Close":bar.close,"Volume":bar.volume},ignore_index = True)
     
     def nextValidId(self, orderId):
         super().nextValidId(orderId)
@@ -49,7 +43,7 @@ class TradingApp(EWrapper, EClient):
         parent.action = action
         parent.orderType = "STP LMT"
         parent.totalQuantity = quantity
-        parent.lmtPrice = limitPrice+0.3
+        parent.lmtPrice = limitPrice
         parent.auxPrice = limitPrice
         #The parent and children orders will need this attribute set to False to prevent accidental executions.
         #The LAST CHILD will have it set to True, 
@@ -187,6 +181,9 @@ def checkStocksEveryTenMin():
     logger.info("Scheduling method checkstocks")
     schedule.every(10).minutes.do(checkStocks)
 
+def getNearestRoundNumber(base,number):
+    return (base * round(number/base))
+    
 def liquidatePosition():
     logger.info("Liquidating positions")
     try:
@@ -216,7 +213,7 @@ logger = setupLogger()
 ########### Connect to TWS Start ##############
 try:
     app = TradingApp()      
-    app.connect("127.0.0.1", 7497, clientId=2)
+    app.connect("127.0.0.1", 4001, clientId=2)
     # starting a separate daemon thread to execute the websocket connection
     con_thread = threading.Thread(target=websocket_con, daemon=True)
     con_thread.start()
@@ -225,35 +222,29 @@ except Exception as ex:
     logger.error("Error connecting gateway %s", ex)
 ###########  Connect to TWS End ##############
 
-order_id = app.nextValidOrderId 
-bracket = TradingApp.bracketOrder(order_id, "BUY", 3, 628.5, 600)
-for o in bracket:
-    app.placeOrder(o.orderId, createStk('AXISBANK'), o)
-
 ########### Get available cash balance #########
-app.reqAccountSummary(9002, "All", "$LEDGER")
-time.sleep(3)
+histData(4,createCallOpt('BANKNIFTY IND',29000,'20201119'),'1 D', '1 day','')
+
+# app.reqAccountSummary(9002, "All", "$LEDGER")
+# time.sleep(3)
 ########### Get available cash balance end #########
 
 ###########  Prepare Historical Data Start ##############
-tickers = ["AXISBANK","RELIANCE", "HDFC","ICICIBANK","MARUTI","BAJFINANC"]
+ticker = 'BANKNIFTY'
 queryTime = (datetime.datetime.today() - datetime.timedelta(days=1)).strftime("%Y%m%d %H:%M:%S")
-for ticker in tickers:
-    try:
-        histData(tickers.index(ticker),createStk(ticker),'1 D', '1 day','')
-    except Exception as ex:
-        logger.error("Error getting historical data for %s", ticker)
-        logger.error(ex)
-    #time.sleep(3)  
+    # try:
+    #     histData(tickers.index(ticker),createStk(ticker),'1 D', '1 day','')
+    # except Exception as ex:
+    #     logger.error("Error getting historical data for %s", ticker)
+    #     logger.error(ex)
 
-while(len(app.df.index)< len(tickers)):
-    continue
     
 app.df.set_index('Date', inplace=True)
 historicalDF = calculatePivots(app.df)
 logger.info('historical df length %d',len(historicalDF))
 ###########  Prepare Historical Data End ##############
-app.reqRealTimeBars(3001, createStk('TCS'), 5, "MIDPOINT", True, [])
+app.reqRealTimeBars(3001, createCallOpt('BANKNIFTY IND',29000,'20201119'), 5, "TRADES", True, [])
+#app.reqRealTimeBars(3001, createStk('TCS'), 5, "MIDPOINT", True, [])
 
 takenPositions = {}
 schedule.every().day.at("09:15").do(checkStocksEveryTenMin)
@@ -261,6 +252,8 @@ schedule.every().day.at("15:20").do(liquidatePosition)
 schedule.every().day.at("15:35").do(exitProgram)
 
 #check error while liquidating ..take logs from rremote server
+
+
 while True:
     schedule.run_pending()
     time.sleep(1)
